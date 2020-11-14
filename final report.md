@@ -1,6 +1,15 @@
-# 服务器端
-## 服务器对数据的处理
-### 接收客户端请求
+
+
+# I. 项目概述
+
+# II. 协议及技术
+
+# III. 功能设计与实现
+
+
+## 1 服务器端
+### 服务器对数据的处理
+#### 接收客户端请求
 - 建立循环查看客户端传来的数据
 - 客户端没有数据传输
   - 证明客户端关闭
@@ -31,7 +40,7 @@ def request_handler(self, client_soc):
         if handler_function:
             handler_function(client_soc, parse_data)
 ```
-### 解析并处理客户端信息
+#### 解析并处理客户端信息
 - 根据分隔符解析数据
   - 提取第一个分隔符前信息为请求类型request_id
   - 注册信息:0000|nickname|password
@@ -64,7 +73,7 @@ def parse_request_text(self, text):
 
       return request_data
 ```
-### 请求处理函数
+#### 请求处理函数
 - 创建request_id和方法关联字典
 - 将request_id和处理函数注册到字典中
 - 相应代码如下：
@@ -172,7 +181,7 @@ def parse_request_text(self, text):
                 continue
             info['sock'].send_data(msg)
   ```
-### 清理离线用户
+#### 清理离线用户
 - 将离线用户信息移出已登录用户数据库
 - 对应代码如下
 ```python
@@ -186,3 +195,45 @@ def remove_offline_user(self, client_soc):
             print(self.clients)
             break
 ```
+
+
+
+## 2 客户端
+
+
+## 3 数据库
+
+## 4 GUI（客户端）
+客户端图形界面包括登录窗口以及聊天窗口，主要通过`Tkinter`库实现。用户运行程序后首先进入登录窗口，输入用户名及密码，经数据库验证成功后进入聊天窗口，开始收发聊天消息。登录窗口同时提供注册按钮，未经注册的用户需要首先注册后方能登录连入聊天室。  
+
+### 4.1 登录/注册窗口  
+绘制登录窗口（含注册窗口）的文件为`login.py`，文件主要包含`WindowLogin`类和`RegisterWindow`类。
+#### 4.1.1 登录窗口
+登录窗口通过创建'WindowLogin'类实现，`WindowLogin`继承了`tkinter`库中的`Tk`窗口类。  
+`WindowLogin`类中包含的函数及基本功能见下表：  
+|函数                                     |功能            |
+| --------------------------------------- | -------------------------------------------------------- |  
+|`window_init(self)`                      |设置窗口基本属性，包括窗口标题、大小、位置；设置窗口尺寸不可修改|  
+|`add_widgets(self)`                      |添加控件，包括两个标签（Username, Password）、两个对应文本框、以及三个按钮（Reset、Login、Register）。<br>窗口整体采用grid表格布局，用户名、密码的标签及输入框分别放置在第一、二行；三个按钮放置在一个Frame中，Frame整体置于第三行。|
+|`clear_input(self)`                      |实现对用户名、密码文本框中已输入内容的清除，辅助实现Reset按钮功能|  
+|`get_username(self)`                     |获取用户名文本框中输入内容|  
+|`get_password(self)`                     |获取密码文本框中输入内容|  
+|`on_reset_button_click(self, command)`   |点击Reset按钮后触发事件，参数command为待执行事件|  
+|`on_login_button_click(self, command)`   |点击Login按钮后触发事件，参数command为待执行事件|  
+|`on_register_button_click(self, command)`|点击Register按钮后触发事件，参数command为待执行事件|  
+|`get_register_info(self)`  `set_up_config(self)` |调用注册子窗口，等待子窗口输入并获取子窗口中注册文本信息|
+|`on_window_closed(self, command)`        |用户退出时对窗口资源的释放|
+
+在设计登录窗口时，有意将点击按钮触发指令编写成独立的函数，而非直接在初始化Button时设置command参数。这是为了方便后续客户端向服务器端传递登录/注册信息，以实现点击按钮的同时完成信息的跨端传输。  
+[登录窗口截图]  
+
+### 4.1.2 注册子窗口  
+注册子窗口通过创建`RegisterWindow`类实现，`RegisterWindow`继承了`Toplevel`类，作为登录窗口的子窗口存在。点击登录窗口的``Register``按钮时弹出注册子窗口。
+`RegisterWindow`类中包含的函数及基本功能见下表：  
+
+|函数                               |功能            |
+| -------------------------------- | --------------------------------------------- |  
+|`register_window_init(self)`      |（1）设置窗口属性及控件布局，包括窗口标题、大小、位置；设置窗口尺寸不可更改；<br>（2）添加控件，包括两个标签（Nickname、Password）、两个对应文本框以及Register按钮|  
+|`get_info(self)`                  |获取两个文本框中用户输入的注册信息，以 [nickname, password] 列表形式保存在user_info变量中|  
+
+调试过程中发现，当点击Register按钮弹出注册窗口时，由于主窗口和子窗口实际是同时运行的，登录主窗口不会等待注册子窗口输入完再获取它的值，则传输到数据库中的注册信息总为空。解决方法为单独创建一个RegisterWindow注册子窗口类，在主窗口中调用并使用wait_window()方法，实现等待注册信息输入完成、点击子窗口中Register按钮后登录窗口再进行注册文本的获取及数据库传输。
