@@ -7,7 +7,7 @@
 ### 实现的功能：用户端发出注册请求、服务器端响应并处理注册请求、用户端发出登录请求、服务器端响应登录请求、用户端发信、服务器端推送消息
 #### 用户端发出注册请求
 - 包含信息：
-
+```python
 #-----------set_ups-------------------
 REQUEST_REGISTER = '0000' #REGISTER REQUEST
 REQUEST_LOGIN = '0001' # LOGIN REQUEST
@@ -16,6 +16,7 @@ RESPONSE_REGISTER_REQUEST = '1000'
 RESPONSE_LOGIN_REQUEST = '1001' # RESPOND TO LOG IN
 RESPONSE_CHAT_REQUEST = "1002" #RESPOND TO CHATTING
 DELIMITER = "|"
+```
 # III. 功能设计与实现
 
 
