@@ -5,8 +5,7 @@
 # II. 协议及技术
 ## 传输协议
 ### 实现的功能：用户端发出注册请求、服务器端响应并处理注册请求、用户端发出登录请求、服务器端响应登录请求、用户端发信、服务器端推送消息
-#### 用户端发出注册请求
-- 包含信息：
+### 实现方式：通过定义不同的操作变化定义不同的操作，并以“|”为分隔符传递信息，将要传递的信息组合拼接进行传输。接收方按照协议的对拼接后的字符串进行分割，获取需要的信息。具体设计如下
 ```python
 #-----------set_ups-------------------
 REQUEST_REGISTER = '0000' #REGISTER REQUEST
@@ -17,6 +16,31 @@ RESPONSE_LOGIN_REQUEST = '1001' # RESPOND TO LOG IN
 RESPONSE_CHAT_REQUEST = "1002" #RESPOND TO CHATTING
 DELIMITER = "|"
 ```
+#### 用户端发出注册请求
+- 包含信息：nickname, password
+- 传输格式：0000|nickname|password
+- 具体代码如下
+~~~ python
+def request_register(nickname, password):
+return DELIMITER.join((REQUEST_REGISTER, nickname, password))
+~~~
+#### 服务器端响应并处理注册请求
+- 包含信息：注册结果（1为成功，0为失败）、username
+- 传输格式：1000|result|username
+#### 用户端发出登录请求
+- 包含信息：username、password
+- 传输格式：0001|username|password
+#### 服务器端响应登录请求
+- 包含信息：登录结果（1为成功，0为失败）、nickname、username
+- 传输格式：1001|result|nickname|username
+#### 用户端发信
+- 包含信息：username、要发送的信息
+- 传输格式：0002|username|message
+#### 服务器端推送消息
+- 包含信息：nickname、要发送的消息
+- 传输格式：1002|nickname|message
+
+
 # III. 功能设计与实现
 
 
