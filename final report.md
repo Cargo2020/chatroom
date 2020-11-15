@@ -89,7 +89,7 @@ return DELIMITER.join((REQUEST_CHAT, username, message))
   - ServerSocket类：用于封装创建服务器套接字的若干方法，便于在Server类中的调用
   - ServerWrapper类：用于封装服务器编解码、收发消息的若干方法，便于在Server类中编写获取连接后的消息收发
 - 在核心类Server中，首先创建ServerSocket类，创建服务器套接字，此后在接收到客户端连接时使用ServerWrapper类，创建服务器和客户端收发数据使用的client_socket。client_socket为ServerWrapper类，故有已近完成封装的“发送数据+utf-8编码”与“收到消息+utf-8解码”方法，可以直接调用来处理消息收发。
--实现多客户端连接以及客户端多次收发消息：多线程处理及死循环（详见下文）
+-实现多客户端连接以及客户端多次收发消息：多线程处理及while true循环（详见下文）
 ### 创建服务器套接字
 #### 创建服务器套接字
 - 创建socket的子类ServerSocket类，在这个类中直接包含服务器创建所需要的基本操作（创建套接字、绑定套接字以及服务器套接字进入监听模式），将这三个操作封装在一起，作为ServerSocket的创建函数，这样在使用中可以更便捷，在主函数中更清晰。故ServerSocket类中包含了socket, bind和listen三个函数。
