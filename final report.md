@@ -67,7 +67,7 @@ return DELIMITER.join((REQUEST_CHAT, username, message))
 - Server类：服务器核心类，包含服务器所需要的所有方法
 - ServerSocket类：用于封装创建服务器套接字的若干方法，便于在Server类中的调用
 - ServerWrapper类：用于封装服务器编解码、收发消息的若干方法，便于在Server类中编写获取连接后的消息收发
-### 创建服务器套接字并接收客户端连接
+### 创建服务器套接字
 #### 创建服务器套接字
 - 创建套接字
 - 将套接字与IP地址和端口号绑定
@@ -91,7 +91,27 @@ def __init__(self):
     self.server_socket = ServerSocket()
     print("waiting for connection")
 ```
-####
+### 接受客户端连接并提供服务
+#### 接受客户端连接
+- 建立循环接受多个客户端连接
+- 生成SocketWrapper套接字实现与客户端之间的消息收发
+#### 与多个客户端进行消息收发
+- 对不同客户端的连接进行多线程处理，每检测到一个客户端的连接，就开始一个新的线程对其请求进行服务
+#### 对应代码如下
+``` python
+def startup(self):
+        """获取客户端连接并提供服务"""
+        while True:
+            # 获取客户端连接
+            soc, addr = self.server_socket.accept()
+
+            # 生成套接字（与客户端交互）
+            client_soc = SocketWrapper(soc)
+
+            # 收发消息
+            t = Thread(target=self.request_handler, args=(client_soc,))
+            t.start()
+```
 ### 服务器对数据的处理
 #### 接收客户端请求
 - 建立循环查看客户端传来的数据
