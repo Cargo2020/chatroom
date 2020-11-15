@@ -62,6 +62,36 @@ return DELIMITER.join((REQUEST_CHAT, username, message))
 
 
 ## 1 服务器端
+### 服务器端设计逻辑
+- 服务器端主要由一下三个类组成
+- Server类：服务器核心类，包含服务器所需要的所有方法
+- ServerSocket类：用于封装创建服务器套接字的若干方法，便于在Server类中的调用
+- ServerWrapper类：用于封装服务器编解码、收发消息的若干方法，便于在Server类中编写获取连接后的消息收发
+### 创建服务器套接字并接收客户端连接
+#### 创建服务器套接字
+- 创建套接字
+- 将套接字与IP地址和端口号绑定
+- 进入监听模式
+- 为设计简便，将上述三个基本功能封装入ServerSocket类中，创建此类后，将直接完成上述操作，进入监听模式
+- 对应代码如下
+``` python
+#ServerSocket类
+class ServerSocket(socket.socket):
+
+    def __init__(self):
+        #设置为TCP类型
+        super(ServerSocket, self).__init__(socket.AF_INET, socket.SOCK_STREAM)
+        #设置地址和端口号
+        self.bind((SERVER_IP, SERVER_PORT))
+        #设置为监听模式
+        self.listen(128)
+     
+#在服务器核心类Server中初始化ServerSocket
+def __init__(self):
+    self.server_socket = ServerSocket()
+    print("waiting for connection")
+```
+####
 ### 服务器对数据的处理
 #### 接收客户端请求
 - 建立循环查看客户端传来的数据
