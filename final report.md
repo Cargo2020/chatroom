@@ -19,7 +19,6 @@ DELIMITER = "|"
 #### 用户端发出注册请求
 - 包含信息：nickname, password
 - 传输格式：0000|nickname|password
-- 具体代码如下
 ~~~ python
 def request_register(nickname, password):
 return DELIMITER.join((REQUEST_REGISTER, nickname, password))
@@ -27,20 +26,38 @@ return DELIMITER.join((REQUEST_REGISTER, nickname, password))
 #### 服务器端响应并处理注册请求
 - 包含信息：注册结果（1为成功，0为失败）、username
 - 传输格式：1000|result|username
+~~~ python
+def response_register_request(result, username):
+return DELIMITER.join([RESPONSE_REGISTER_REQUEST, result, username])
+~~~
 #### 用户端发出登录请求
 - 包含信息：username、password
 - 传输格式：0001|username|password
+~~~ python
+def request_login_result(username, password):
+return DELIMITER.join((REQUEST_LOGIN, username, password))
+~~~
 #### 服务器端响应登录请求
 - 包含信息：登录结果（1为成功，0为失败）、nickname、username
 - 传输格式：1001|result|nickname|username
+~~~ python
+def response_login_result(result, nickname, username ):
+return DELIMITER.join([RESPONSE_LOGIN_REQUEST,result,nickname,username])
+~~~
 #### 用户端发信
 - 包含信息：username、要发送的信息
 - 传输格式：0002|username|message
+```python
+def request_chat(username, message):
+return DELIMITER.join((REQUEST_CHAT, username, message))
+```
 #### 服务器端推送消息
 - 包含信息：nickname、要发送的消息
 - 传输格式：1002|nickname|message
-
-
+``` python
+ def response_chat(nickname, massage):
+ return DELIMITER.join([RESPONSE_CHAT_REQUEST,nickname, massage])
+```
 # III. 功能设计与实现
 
 
