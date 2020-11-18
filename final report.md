@@ -382,6 +382,7 @@ def remove_offline_user(self, client_soc):
 
 
 # Ⅳ 优化方案
+## 1 改进方案
 ## 1 多聊天室
 ### 1.1 目前多聊天室的实现方式：
 - 用户登录时输入聊天室号码
