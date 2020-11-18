@@ -335,6 +335,25 @@ def remove_offline_user(self, client_soc):
 
 
 ## 3 数据库
+为了支持聊天室的注册与登录功能，需要在服务器端部署数据库。我们使用PostgreSQL作为我们的数据库平台，同时使用psycopg2包让Python控制我们的数据库。
+我们的数据库的设计非常简单，只有一个名为“user_info”的表，该表中包含三列：用户名，昵称和密码。用户名是我们的主键，它是一个唯一的整数，注册时会自动分配。昵称和密码可以由用户指定。该表的设计如下：
+```SQL
+CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCHAR(80), password VARCHAR(80))
+```
+我们设计了两个函数来与数据库通信。一个是注册函数register(nickname, password)，它将返回新用户的唯一用户名。另一个是登录函数check_log_in(username, password)，它将检查客户端键入的用户名和密码是否与数据库中存储的数据一致。
+```Python
+def register(self, nickname, password):
+      self.cursor.execute("INSERT INTO user_info(nickname, password) VALUES (%s, %s) RETURNING username", (nickname, password))
+      return '1', str(self.cursor.fetchone()[0])
+      
+def check_log_in(self, username, password):
+      self.cursor.execute("SELECT * FROM user_info WHERE username = %s AND password = %s", (int(username), password))
+      result = self.cursor.fetchall()
+      if len(result) == 0:
+         return '0', '', ''
+      else:
+         return '1', result[0][1], str(result[0][0])
+```
 
 ## 4 GUI（客户端）
 客户端图形界面包括登录窗口以及聊天窗口，主要通过`Tkinter`库实现。用户运行程序后首先进入登录窗口，输入用户名及密码，经数据库验证成功后进入聊天窗口，开始收发聊天消息。登录窗口同时提供注册按钮，未经注册的用户需要首先注册后方能登录连入聊天室。  
