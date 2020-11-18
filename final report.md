@@ -35,7 +35,7 @@
 |`config.py`               | 保存程序中需要的参数，包括操作符、服务器地址和服务器端口号等信息，便于后续程序的引用，也便于后续的修改 |  
 |`request_protocol.py`     |       |
 |`client.py`    |      |  
-|`client_socket.py`          | 对客户端socket的封装类 |  
+|`client_socket.py`          | 对客户端socket的封装类，包含了客户端socket创建、与服务器端的连接及收发消息 |  
 |`login.py`        |  登录及注册窗口图形界面设计   |  
 |`chat_window.py`   |  聊天窗口图形界面设计  |
 
@@ -411,6 +411,35 @@ CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCH
 |`on_window_closed(self, command)`        |用户退出时对窗口资源的释放|
 
 在设计登录窗口时，有意将点击按钮触发指令编写成独立的函数，而非直接在初始化Button时设置command参数。这是为了方便后续客户端向服务器端传递登录/注册信息，以实现点击按钮的同时完成信息的跨端传输。  
+- 部分功能性函数对应代码如下：
+```python
+    def clear_input(self):
+        self.children['username_entry'].delete(0, END)
+        self.children['password_entry'].delete(0, END)
+
+    def get_username(self):
+        return self.children['username_entry'].get()
+    def get_password(self):
+        return self.children['password_entry'].get()
+        
+    def on_reset_button_click(self, command):
+        reset_bt = self.children['bt_frame'].children['reset_bt']
+        reset_bt['command'] = command
+    def on_login_button_click(self, command):
+        login_bt = self.children['bt_frame'].children['login_bt']
+        login_bt['command'] = command
+    def on_register_button_click(self, command):
+        register_bt = self.children['bt_frame'].children['register_bt']
+        register_bt['command'] = command
+        
+    def get_register_info(self):
+        register_win = RegisterWindow()
+        self.wait_window(register_win)
+        return register_win.user_info
+    def set_up_config(self):
+        res = self.get_register_info()
+        return res
+```        
 [登录窗口截图]  
 
 #### 4.1.2 注册子窗口  
@@ -424,6 +453,13 @@ CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCH
 
 调试过程中发现，当点击`Register`按钮弹出注册窗口时，由于主窗口和子窗口实际是同时运行的，登录主窗口不会等待注册子窗口输入完再获取它的值，则传输到数据库中的注册信息总为空。解决方法为单独创建一个`RegisterWindow`注册子窗口类，在主窗口中调用并使用`wait_window()`方法，实现等待注册信息输入完成、点击子窗口中`Register`按钮后登录窗口再进行注册文本的获取及数据库传输。
 
+- 获取注册信息的`get_info(self)`函数代码如下：
+```python
+   def get_info(self):
+        self.user_info = [self.new_name.get(), self.new_password.get()]
+        self.destroy()
+```
+
 ### 4.2 聊天窗口
 绘制聊天窗口的文件为`chat_window.py`。聊天窗口通过创建`ChatWindow`类实现，`ChatWindow`继承了`Toplevel`类。这是因为一个程序只能有一个根窗口（这里是登录窗口），其余窗口均需要以子窗口形式存在。<br>
 `ChatWindow`类中包含的函数及基本功能见下表：<br>
@@ -436,6 +472,16 @@ CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCH
 |`clear_input(self)`                     |清除聊天输入框中内容。辅助实现：点击发送按钮后，输入框中内容全部清除（代表信息发送出去）|  
 |`append_message(self, sender, message)`   |添加聊天信息到聊天内容显示框。效果如图：<br>发送者tag格式为[昵称：当前时间]，用户自己发出的信息昵称会显示为“Me”|  
 |`on_window_closed(self, command)`       |用户退出时对窗口资源的释放|
+
+- 用于添加聊天信息的`append_message()`函数代码如下：
+```python
+    def append_message(self, sender, message):
+        send_time = strftime('%Y-%m-%d %H:%M:%S', localtime())
+        send_info = '%s: %s\n' % (sender, send_time)
+        self.children['textarea'].insert(END, send_info, 'green')
+        self.children['textarea'].insert(END, ' ' + message + '\n')
+        self.children['textarea'].yview_scroll(3, UNITS)
+```
 
 ## 5 （拓展功能）多聊天室
 在实现基本的多人聊天室功能的基础上，我们考虑对程序进行拓展，实现多聊天室。用户可以在登录窗口输入想要进入的房间号，只有进入相同房间号的用户可以互相收发消息。<br>
