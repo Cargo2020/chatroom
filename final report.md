@@ -198,12 +198,16 @@ def request_handler(self, client_soc):
             handler_function(client_soc, parse_data)
 ```
 #### 解析并处理客户端信息
-- 根据分隔符解析数据
-  - 提取第一个分隔符前信息为请求类型request_id
-  - 注册信息:0000|nickname|password
-  - 登陆信息:0001|username|password
-  - 聊天信息:0002|username|messages
-- 根据request_id判断请求类型并调用相应处理函数
+- 根据分隔符解析数据：客户端以统一的格式（request_id|information1|information2)传输数据，数据各部分以分隔符"|"分隔开。服务器将数据解析为三部分，并通过request_id判断请求类型，调用相应函数以处理数据。
+
+- 三种数据信息类型
+
+  | 功能 | request_id | information1     | information2       |
+  | ---- | ---------- | ---------------- | ------------------ |
+  | 注册 | 0000       | 昵称(nickname)   | 密码(password)     |
+  | 登陆 | 0001       | 用户名(username) | 密码(password)     |
+  | 聊天 | 0002       | 用户名(username) | 聊天内容(messages) |
+
 - 对应代码如下：
 ```python
 def parse_request_text(self, text):
@@ -231,56 +235,60 @@ def parse_request_text(self, text):
       return request_data
 ```
 #### 请求处理函数
-- 创建request_id和方法关联字典
-- 将request_id和处理函数注册到字典中
+- 创建request_id和方法关联字典，并将request_id和处理函数注册到字典中。这种存储方式将请求类型与处理函数的函数名一一对应起来，且在后续调用过程中直接传输request_id即可得到相应处理函数，这样大大缩减了代码量并且提高了请求处理函数的调用灵活性。  
+
 - 相应代码如下：
 ```python
- def __init__(self):
-        self.server_socket = ServerSocket()
-        print("waiting for connection")
+def __init__(self):
+    self.server_socket = ServerSocket()
+    print("waiting for connection")
 
-        # 创建请求的id和方法关联字典
-        self.request_handler_function = {}
-        self.register(REQUEST_LOGIN, self.request_login_handler)
-        self.register(REQUEST_CHAT, self.request_chat_handler)
-        self.register(REQUEST_REGISTER, self.request_register_handler)
+    # 创建请求的id和方法关联字典
+    self.request_handler_function = {}
+    self.register(REQUEST_LOGIN, self.request_login_handler)
+    self.register(REQUEST_CHAT, self.request_chat_handler)
+    self.register(REQUEST_REGISTER, self.request_register_handler)
 
-        # 创建保存当前登陆用户的字典
-        self.clients = {}
+    # 创建保存当前登陆用户的字典
+    self.clients = {}
 
-    def register(self, request_id, handler_function):
-        # 注册消息类型和处理函数到字典里
-        self.request_handler_function[request_id] = handler_function
+def register(self, request_id, handler_function):
+    # 注册消息类型和处理函数到字典里
+    self.request_handler_function[request_id] = handler_function
 ```
 - 具体的请求处理函数
-- 处理注册功能
-  - 将用户信息写入数据库
-  - 将用户名信息返回到客户端
+
+- 三种请求处理函数
+
+  | 函数名称                   | 函数功能 | 参数                   | response               |
+  | -------------------------- | -------- | ---------------------- | ---------------------- |
+  | `request_register_handler` | 注册     | `nickname`, `password` | `username`             |
+  | `request_login_handler`    | 登陆     | `username`, `password` | `nickname`, `username` |
+  | `request_chat_handler`     | 聊天     | `username`,`message`   | `nickname`, `message`  |
+
+- 处理注册功能(request_id=0000)：注册功能需要解析出客户端传来的昵称(nickname)和密码(password)，将之存入数据库中，并自动生成一个独一无二的用户名(username)作为用户的唯一身份标识传回到客户端。
   - 相应代码如下：
   ```python
-      def request_register_handler(self, client_soc, request_data):
-        """处理注册功能"""
-        print('收到注册请求~~准备处理~~')
-        # 返回昵称及密码
-        nickname = request_data['nickname']
-        password = request_data['password']
+  def request_register_handler(self, client_soc, request_data):
+      """处理注册功能"""
+      print('收到注册请求~~准备处理~~')
+      # 返回昵称及密码
+      nickname = request_data['nickname']
+      password = request_data['password']
 
-        # 写入数据库
-        db = DB()
-        ret, username = db.register(nickname, password)
-        db.close_db_connection()
+      # 写入数据库
+      db = DB()
+      ret, username = db.register(nickname, password)
+      db.close_db_connection()
 
-        # 拼接返回给客户端的消息
-        response_text = ResponseProtocol.response_register_request(ret, username)
+      # 拼接返回给客户端的消息
+      response_text = ResponseProtocol.response_register_request(ret, username)
 
-        # 把消息发送给客户端
-        client_soc.send_data(response_text)
+      # 把消息发送给客户端
+      client_soc.send_data(response_text)
   ```
-- 处理登陆功能
-  - 获取用户账号密码
-  - 检察用户是否可以登陆
-  - 保存已登录用户信息到数据库中
-  - 向用户发送其用户名及昵称
+  
+- 处理登陆功能(request_id=0001)：由于用户只能通过用户名和密码登陆系统，服务器端需要在客户端传来的数据中解析出用户名，密码。首先，服务器需要在数据库中查询用户的登陆状态，已确定用户是否可以登陆。如果用户登陆成功，则将用户的登陆状态改为1，并将用户信息更新到数据库中，同时将用户名及昵称返回给客户端。
   - 相应代码如下：
   ```python
       def request_login_handler(self, client_soc, request_data):
@@ -315,9 +323,8 @@ def parse_request_text(self, text):
         db.close_db_connection()
         return ret, nickname, real_username
   ```
-- 处理聊天功能
-  - 获取用户名及聊天内容
-  - 将对应昵称及聊天内容转发给所有除发送人之外的在线用户
+  
+- 处理聊天功能(request_id=0002)：首先服务器端需要解析出用户名(username)及聊天内容(message)，然后在数据库中找到该用户的昵称(nickname)，并将昵称及聊天内容广播给所有在线用户（发送消息的用户除外）
   - 对应代码如下：
   ```python
       def request_chat_handler(self, client_soc, request_data):
@@ -338,8 +345,11 @@ def parse_request_text(self, text):
                 continue
             info['sock'].send_data(msg)
   ```
+
+
+
 #### 清理离线用户
-- 将离线用户信息移出已登录用户数据库
+- 将离线用户信息移出已登录用户数据库：由于我们规定了用户不能向服务器发送空字符串，当某客户端数据为空时会判定其下线了。这时需要更新数据库，将该用户设定为离线状态。
 - 对应代码如下
 ```python
 def remove_offline_user(self, client_soc):
@@ -352,7 +362,6 @@ def remove_offline_user(self, client_soc):
             print(self.clients)
             break
 ```
-
 
 
 ## 2 客户端
