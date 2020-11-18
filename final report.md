@@ -368,6 +368,20 @@ def remove_offline_user(self, client_soc):
 
 
 ## 3 数据库
+为了支持注册与登录功能，需要在服务器端部署数据库。我们使用PostgreSQL作为数据库平台，同时使用psycopg2包让Python控制我们的数据库。
+
+我们的数据库设计非常简单，只有一个名为“user_info”的表，该表中包含三列：用户名，昵称和密码。用户名是我们的主键，它是一个唯一的整数，注册时会自动分配。昵称和密码可以由用户设定。该表的设计如下：
+
+```sql
+CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCHAR(80), password VARCHAR(80)) 
+```
+
+我们设计了两个函数来与数据库通信：
+
+| 函数                                     | 功能                                                         |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| `check_log_in(self, username, password)` | 登录函数，它将检查键入的用户名和密码是否与数据库中存储的数据一致。若一致则返回成功登录信息。 |
+| `register(self, nickname, password)`     | 注册函数，它会将新用户的昵称和密码存入数据库，同时返回新用户的唯一用户名。 |
 
 ## 4 GUI（客户端）
 客户端图形界面包括登录窗口以及聊天窗口，主要通过`Tkinter`库实现。用户运行程序后首先进入登录窗口，输入用户名及密码，经数据库验证成功后进入聊天窗口，开始收发聊天消息。登录窗口同时提供注册按钮，未经注册的用户需要首先注册后方能登录连入聊天室。  
@@ -416,6 +430,34 @@ def remove_offline_user(self, client_soc):
 |`clear_input(self)`                     |清除聊天输入框中内容。辅助实现：点击发送按钮后，输入框中内容全部清除（代表信息发送出去）|  
 |`append_message(self, sender, message)`   |添加聊天信息到聊天内容显示框。效果如图：<br>发送者tag格式为[昵称：当前时间]，用户自己发出的信息昵称会显示为“Me”|  
 |`on_window_closed(self, command)`       |用户退出时对窗口资源的释放|
+
+## 5 多个聊天室
+
+为了实现多个聊天室的功能，首先需要对服务器与客户端的通信协议进行修改，在客户端请求登录和发送聊天消息时加入房间号：
+
+- 客户端请求登录： 
+
+  `0001|username|password|roomnumber`
+
+- 客户端发送聊天信息：
+
+  `0002|username|messages|roomnumber`
+
+用户登录时需要首先指定房间号`roomnumber`，服务器端将该用户的socket与房间号绑定并存入在线用户字典
+
+```python
+self.clients[username] = {'sock': client_soc, 'nickname': nickname, 'roomnumber': roomnumber}
+```
+
+客户端发送的聊天信息中也包含房间号，服务器在转发该条聊天时，只转发至有相同房间号的客户端：
+
+```Python
+for u_name, info in self.clients.items():
+    if username == u_name:  # 不需要向发送消息的人转发数据
+        continue
+    if info['roomnumber'] == roomnumber: # 只给同一聊天室的人发送信息
+        info['sock'].send_data(msg)
+```
 
 
 # Ⅳ 分析与评价
