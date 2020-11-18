@@ -29,8 +29,8 @@ Socket用来描述IP地址和端口，是支持TCP/IP协议网络通信的基本
 ### 实现的功能
 用户端发出注册请求、服务器端响应并处理注册请求、用户端发出登录请求、服务器端响应登录请求、用户端发信、服务器端推送消息
 ### 实现方式
-在传输字符串中，首先提供操作符，指定操作，后再将各个操作对应参数以分隔符隔开，组合成字符串进行传输，接收端通过读取操作符和分隔符拆分解析信息。操作符：四项功能分别对应四个操作符，用户端发出登录请求（0001）、服务器端响应登录请求（1001）、用户端发信（0002）、服务器端推送消息（1002），同时选择分隔符：“|”
-关于使用的分隔符，可能出现的问题是客户发送的消息内部，以及nickname内部可能存在“|”干扰我们的识别。对于message内部存在的“|”，这其实是难以避免的，于是我们将这部分放在传输字符串的最后，这样在客户发送消息含有“|”的时候由于我们的解析是从左向右读取，并不影响消息的正常拆分。而对于nickname内部存在的“|”，我们可以在注册时将含有“|”的nickname设置为非法的昵称，不允许用户使用包含分隔符的昵称
+在传输字符串中，首先提供操作符，指定操作，后再将各个操作对应参数以分隔符隔开，组合成字符串进行传输，接收端通过读取操作符和分隔符拆分解析信息。操作符：四项功能分别对应四个操作符，用户端发出登录请求（0001）、服务器端响应登录请求（1001）、用户端发信（0002）、服务器端推送消息（1002），同时选择分隔符：“|”<br>
+关于使用的分隔符，可能出现的问题是客户发送的消息内部，以及nickname内部可能存在“|”干扰我们的识别。对于message内部存在的“|”，这其实是难以避免的，于是我们将这部分放在传输字符串的最后，这样在客户发送消息含有“|”的时候由于我们的解析是从左向右读取，并不影响消息的正常拆分。而对于nickname内部存在的“|”，我们可以在注册时将含有“|”的nickname设置为非法的昵称，不允许用户使用包含分隔符的昵称<br>
 ```python
 #-----------set_ups-------------------
 REQUEST_REGISTER = '0000' #REGISTER REQUEST
@@ -96,11 +96,7 @@ return DELIMITER.join((REQUEST_CHAT, username, message))
 -实现多客户端连接以及客户端多次收发消息：多线程处理及while true循环（详见下文）
 ### 创建服务器套接字
 #### 创建服务器套接字
-- 创建socket的子类ServerSocket类，在这个类中直接包含服务器创建所需要的基本操作（创建套接字、绑定套接字以及服务器套接字进入监听模式），将这三个操作封装在一起，作为ServerSocket的创建函数，这样在使用中可以更便捷，在主函数中更清晰。故ServerSocket类中包含了socket, bind和listen三个函数。
-- 创建套接字
-- 将套接字与IP地址和端口号绑定
-- 进入监听模式
-- 为设计简便，将上述三个基本功能封装入ServerSocket类中，创建此类后，将直接完成上述操作，进入监听模式
+- 创建socket的子类ServerSocket类，在这个类中直接包含服务器创建所需要的基本操作（创建套接字、绑定套接字以及服务器套接字进入监听模式），将这三个操作封装在一起，作为ServerSocket的创建函数，这样在使用中可以更便捷，在主函数中更清晰。故ServerSocket类中包含了socket, bind和listen三个函数，这样在server中调用创建ServerSocket时，就可以直接创建一个已经处于监听状态的socket，使得在server中的代码更加简洁清晰。
 - 对应代码如下
 ``` python
 #ServerSocket类
@@ -121,7 +117,7 @@ def __init__(self):
 ```
 ### 接受客户端连接并提供服务
 #### 接受多个客户端连接
-- 若仅需要与一个客户端建立连接，那么直接使用socket.accept即可，但是此时存在多个客户端连接，就需要服务器端在接受一个连接后可以再次运行到socket.accpet的代码，再次接受新的连接，于是此时采用while true循环，不断在接收客户端代码和创建与客户端交互的client_socket之间循环，便于接受多个连接。
+- 若仅需要与一个客户端建立连接，那么直接使用socket.accept即可，但是在使用在发现，即使serversocket没有关闭，由于socket.accept代码段已经运行过一次了，新的连接无法创建，故需要多次运行这段代码，再次接受新的连接，于是采用while true循环。由于在接收客户端连接之后还需要创建与客户端交互的client_socket，且这个socket是每个客户端都是需要一个的，所以这段代码也要紧接着accept重复运行，故最终使用while true不断在接收客户端代码和创建与客户端交互的client_socket之间循环，便于接受多个连接。
 - 在创建与客户端交互的套接字时，应生成SocketWrapper套接字以便于使用封装好的方法实现与客户端之间的消息收发。
 #### 与多个客户端进行消息收发
 - 对不同客户端的连接需要进行多线程处理，每检测到一个客户端的连接，就开始一个新的线程对其请求进行后续消息收发服务。使用Thread类，以客户端请求处理器(request_handler)作为需要创立多线程方法。建立线程后即刻启动线程，收发客户端和服务器端之间的通信。而后续对内容的具体分辨和处理都在客户端请求处理器(request_handler)具体实现。
@@ -335,25 +331,6 @@ def remove_offline_user(self, client_soc):
 
 
 ## 3 数据库
-为了支持聊天室的注册与登录功能，需要在服务器端部署数据库。我们使用PostgreSQL作为我们的数据库平台，同时使用psycopg2包让Python控制我们的数据库。
-我们的数据库的设计非常简单，只有一个名为“user_info”的表，该表中包含三列：用户名，昵称和密码。用户名是我们的主键，它是一个唯一的整数，注册时会自动分配。昵称和密码可以由用户指定。该表的设计如下：
-```SQL
-CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCHAR(80), password VARCHAR(80))
-```
-我们设计了两个函数来与数据库通信。一个是注册函数register(nickname, password)，它将返回新用户的唯一用户名。另一个是登录函数check_log_in(username, password)，它将检查客户端键入的用户名和密码是否与数据库中存储的数据一致。
-```Python
-def register(self, nickname, password):
-      self.cursor.execute("INSERT INTO user_info(nickname, password) VALUES (%s, %s) RETURNING username", (nickname, password))
-      return '1', str(self.cursor.fetchone()[0])
-      
-def check_log_in(self, username, password):
-      self.cursor.execute("SELECT * FROM user_info WHERE username = %s AND password = %s", (int(username), password))
-      result = self.cursor.fetchall()
-      if len(result) == 0:
-         return '0', '', ''
-      else:
-         return '1', result[0][1], str(result[0][0])
-```
 
 ## 4 GUI（客户端）
 客户端图形界面包括登录窗口以及聊天窗口，主要通过`Tkinter`库实现。用户运行程序后首先进入登录窗口，输入用户名及密码，经数据库验证成功后进入聊天窗口，开始收发聊天消息。登录窗口同时提供注册按钮，未经注册的用户需要首先注册后方能登录连入聊天室。  
