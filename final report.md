@@ -134,13 +134,13 @@ return DELIMITER.join((REQUEST_CHAT, username, message))
 #ServerSocket类
 class ServerSocket(socket.socket):
 
-    def __init__(self):
-        #设置为TCP类型
-        super(ServerSocket, self).__init__(socket.AF_INET, socket.SOCK_STREAM)
-        #设置地址和端口号
-        self.bind((SERVER_IP, SERVER_PORT))
-        #设置为监听模式
-        self.listen(128)
+def __init__(self):
+    #设置为TCP类型
+    super(ServerSocket, self).__init__(socket.AF_INET, socket.SOCK_STREAM)
+    #设置地址和端口号
+    self.bind((SERVER_IP, SERVER_PORT))
+    #设置为监听模式
+    self.listen(128)
      
 #在服务器核心类Server中初始化ServerSocket
 def __init__(self):
@@ -158,17 +158,17 @@ def __init__(self):
 #### 对应代码如下
 ``` python
 def startup(self):
-        """获取客户端连接并提供服务"""
-        while True:
-            # 获取客户端连接
-            soc, addr = self.server_socket.accept()
+    """获取客户端连接并提供服务"""
+    while True:
+        # 获取客户端连接
+        soc, addr = self.server_socket.accept()
 
-            # 生成套接字（与客户端交互）
-            client_soc = SocketWrapper(soc)
+        # 生成套接字（与客户端交互）
+        client_soc = SocketWrapper(soc)
 
-            # 收发消息
-            t = Thread(target=self.request_handler, args=(client_soc,))
-            t.start()
+        # 收发消息
+        t = Thread(target=self.request_handler, args=(client_soc,))
+        t.start()
 ```
 ### 服务器对数据的处理
 #### 接收客户端请求
@@ -272,7 +272,7 @@ def register(self, request_id, handler_function):
   | `request_login_handler`    | 登陆     | `username`, `password` | `nickname`, `username` |
   | `request_chat_handler`     | 聊天     | `username`,`message`   | `nickname`, `message`  |
 
-- 处理注册功能(request_id=0000)：注册功能需要解析出客户端传来的昵称(nickname)和密码(password)，将之存入数据库中，并自动生成一个独一无二的用户名(username)作为用户的唯一身份标识传回到客户端。
+- 处理注册功能(request_id=0000)：注册功能需要解析出客户端传来的昵称(nickname)和密码(password)，将之存入数据库中，并自动生成一个独一无二的用户名(username)作为用户的唯一身份标识（也是数据库中的主键）传回到客户端。
   - 相应代码如下：
   ```python
   def request_register_handler(self, client_soc, request_data):
@@ -294,7 +294,7 @@ def register(self, request_id, handler_function):
       client_soc.send_data(response_text)
   ```
   
-- 处理登陆功能(request_id=0001)：由于用户只能通过用户名和密码登陆系统，服务器端需要在客户端传来的数据中解析出用户名，密码。首先，服务器需要在数据库中查询用户的登陆状态，已确定用户是否可以登陆。如果用户登陆成功，则将用户的登陆状态改为1，并将用户信息更新到数据库中，同时将用户名及昵称返回给客户端。
+- 处理登陆功能(request_id=0001)：由于用户只能通过用户名和密码登陆系统，服务器端需要在客户端传来的数据中解析出用户名，密码。首先，服务器需要在数据库中查询用户名与登陆密码是否匹配，以确定用户是否可以登陆。如果用户登陆成功，则将用户名及昵称返回给客户端。
   - 相应代码如下：
   ```python
       def request_login_handler(self, client_soc, request_data):
@@ -355,7 +355,7 @@ def register(self, request_id, handler_function):
 
 
 #### 清理离线用户
-- 将离线用户信息移出已登录用户数据库：由于我们规定了用户不能向服务器发送空字符串，当某客户端数据为空时会判定其下线了。这时需要更新数据库，将该用户设定为离线状态。
+- 由于我们规定了用户不能向服务器发送空字符串，当某客户端数据为空时会判定其下线了。这时需要切断服务器端与客户端之间的连接。
 - 对应代码如下
 ```python
 def remove_offline_user(self, client_soc):
