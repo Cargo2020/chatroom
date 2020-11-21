@@ -38,34 +38,6 @@
 
 ## 4 项目运行及预览
 
-### 多个聊天室
-
-为了实现多个聊天室的功能，首先需要对服务器与客户端的通信协议进行修改，在客户端请求登录和发送聊天消息时加入房间号：
-
-- 客户端请求登录： 
-
-  `0001|username|password|roomnumber`
-
-- 客户端发送聊天信息：
-
-  `0002|username|messages|roomnumber`
-
-用户登录时需要首先指定房间号`roomnumber`，服务器端将该用户的socket与房间号绑定并存入在线用户字典
-
-```python
-self.clients[username] = {'sock': client_soc, 'nickname': nickname, 'roomnumber': roomnumber}
-```
-
-客户端发送的聊天信息中也包含房间号，服务器在转发该条聊天时，只转发至有相同房间号的客户端：
-
-```Python
-for u_name, info in self.clients.items():
-    if username == u_name:  # 不需要向发送消息的人转发数据
-        continue
-    if info['roomnumber'] == roomnumber: # 只给同一聊天室的人发送信息
-        info['sock'].send_data(msg)
-```
-
 ### 运行程序
 
 - 服务器端：需要在config.py文件中配置如下变量，配置结束后直接运行server.py文件即可，程序会开始等待客户端的连接。
