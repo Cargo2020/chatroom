@@ -177,11 +177,11 @@ def __init__(self):
     self.server_socket = ServerSocket()
     print("waiting for connection")
 ```
-### 1.2.2 接受客户端连接并提供服务
-#### (1) 接受多个客户端连接——while true循环
+#### 1.2.2 接受客户端连接并提供服务
+##### (1) 接受多个客户端连接——while true循环
 若仅需要与一个客户端建立连接，直接使用socket.accept()即可。但我们在调试过程中发现，即使serversocket没有关闭，由于socket.accept()代码段已经运行过一次了，新的连接无法创建，故需要多次运行这段代码，再接受新的连接，于是采用while true循环。由于在接收客户端连接之后还需要创建与客户端交互的client_socket，且这个socket每个客户端都需要一个，所以这段代码也要紧接着accept重复运行，因此使用while true不断在接收客户端代码和创建与客户端交互的client_socket之间循环，便于接受多个连接。  
 在创建与客户端交互的套接字client_socket时，应生成封装了传输功能的SocketWrapper套接字类以便于使用封装好的方法实现与客户端之间的消息收发。
-#### (2) 与多个客户端进行消息收发——多线程处理
+##### (2) 与多个客户端进行消息收发——多线程处理
 服务器端需要同时服务不同的客户端，这些客户端发出的请求和需要的服务都是不相同的，因此需要进行多线程处理。每检测到一个客户端的连接，就开启一个新的线程对其请求进行后续服务。调用Thread类，以客户端请求处理器(request_handler)作为需要创立多线程方法。建立线程后即刻启动线程，收发客户端和服务器端之间的消息。而后续对内容的具体分辨和处理都在客户端请求处理器(request_handler)具体实现。
 - Thread类：Thread类需要的参数包括一个可调用的target对象，以及参数args，在这里，我们调用的对象是具体处理客户端消息的request_handler类，参数是request_handler需要的client_soc
 至此，服务器端已经完成了与客户端的基本连接，实现了跟多个客户端的多次通信，后续服务器端需要实现的内容就是对客户端消息的拆分和处理。
@@ -200,8 +200,8 @@ def startup(self):
         t = Thread(target=self.request_handler, args=(client_soc,))
         t.start()
 ```
-### 1.2.3 服务器对数据的处理
-#### (1) 接收客户端请求
+#### 1.2.3 服务器对数据的处理
+##### (1) 接收客户端请求
 如果仅考虑一次性接收客户端请求，直接调用ServerSocket类中的recv_data封装方法即可，而如果需要多次接收客户端请求，则与接收客户端连接类似，需要多次运行到recv_data的代码，故也采取while true的形式。此外，一般而言，在完成接收后，用于与客户端交互的client_socket需要及时关闭，但是这里我们需要多次接收，所以socket.close()不可以直接写在循环中。但我们也不能一直不关闭套接字，于是在循环中需要一个if函数，在客户端发送的消息不为空字符串时，认为客户端还要继续发送，则不关闭套接字，若检测到客户端发送了空套接字，则认为客户端与主机端的通信结束，关闭client_socket。
 基于上述考虑，处理客户端请求的流程可总结为：
 首先建立循环查看客户端传来的数据，如果客户端没有数据传输，则证明客户端关闭，服务器端将移除离线用户，关闭客户端，结束循环；如果客户端有数据传输，则服务器端接收客户端数据并进行下一步解析处理，分析请求类型并根据请求类型调用相应的处理函数。
@@ -226,7 +226,7 @@ def request_handler(self, client_soc):
         if handler_function:
             handler_function(client_soc, parse_data)
 ```
-#### (2) 解析并处理客户端信息
+##### (2) 解析并处理客户端信息
 根据分隔符解析数据：客户端以统一的格式（request_id|information1|information2)传输数据，数据各部分以分隔符"|"分隔开。服务器将数据解析为三部分，并通过request_id判断请求类型，调用相应函数以处理数据。
 
 - 三种数据信息类型：
@@ -263,7 +263,7 @@ def parse_request_text(self, text):
 
       return request_data
 ```
-#### (3) 请求处理函数
+##### (3) 请求处理函数
 创建request_id和方法关联字典，并将request_id和处理函数注册到字典中。这种存储方式将请求类型与处理函数的函数名一一对应起来，且在后续调用过程中直接传输request_id即可得到相应处理函数，这样大大缩减了代码量并且提高了请求处理函数的调用灵活性。  
 
 对应代码如下：
@@ -294,7 +294,7 @@ def register(self, request_id, handler_function):
   | `request_login_handler`    | 登陆     | `username`, `password` | `nickname`, `username` |
   | `request_chat_handler`     | 聊天     | `username`,`message`   | `nickname`, `message`  |
 
-1) 处理注册功能(request_id=0000)：注册功能需要解析出客户端传来的昵称(nickname)和密码(password)，将之存入数据库中，并自动生成一个独一无二的用户名(username)作为用户的唯一身份标识（也是数据库中的主键）传回到客户端。
+i. 处理注册功能(request_id=0000)：注册功能需要解析出客户端传来的昵称(nickname)和密码(password)，将之存入数据库中，并自动生成一个独一无二的用户名(username)作为用户的唯一身份标识（也是数据库中的主键）传回到客户端。
   对应代码如下：
   ```python
   def request_register_handler(self, client_soc, request_data):
@@ -316,7 +316,7 @@ def register(self, request_id, handler_function):
       client_soc.send_data(response_text)
   ```
   
-2) 处理登陆功能(request_id=0001)：由于用户只能通过用户名和密码登陆系统，服务器端需要在客户端传来的数据中解析出用户名，密码。首先，服务器需要在数据库中查询用户名与登陆密码是否匹配，以确定用户是否可以登陆。如果用户登陆成功，则将用户名及昵称返回给客户端。
+ii. 处理登陆功能(request_id=0001)：由于用户只能通过用户名和密码登陆系统，服务器端需要在客户端传来的数据中解析出用户名，密码。首先，服务器需要在数据库中查询用户名与登陆密码是否匹配，以确定用户是否可以登陆。如果用户登陆成功，则将用户名及昵称返回给客户端。
   对应代码如下：
   ```python
       def request_login_handler(self, client_soc, request_data):
@@ -352,7 +352,7 @@ def register(self, request_id, handler_function):
         return ret, nickname, real_username
   ```
   
-  3) 处理聊天功能(request_id=0002)：首先服务器端需要解析出用户名(username)及聊天内容(message)，然后在数据库中找到该用户的昵称(nickname)，并将昵称及聊天内容广播给所有在线用户（发送消息的用户除外）
+iii. 处理聊天功能(request_id=0002)：首先服务器端需要解析出用户名(username)及聊天内容(message)，然后在数据库中找到该用户的昵称(nickname)，并将昵称及聊天内容广播给所有在线用户（发送消息的用户除外）
   对应代码如下：
   ```python
       def request_chat_handler(self, client_soc, request_data):
@@ -374,7 +374,7 @@ def register(self, request_id, handler_function):
             info['sock'].send_data(msg)
   ```
 
-#### (4) 清理离线用户
+##### (4) 清理离线用户
 由于我们规定了用户不能向服务器发送空字符串，当某客户端数据为空时会判定其下线,这时需要切断服务器端与客户端之间的连接。
 对应代码如下：
 ```python
