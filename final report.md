@@ -391,7 +391,183 @@ def remove_offline_user(self, client_soc):
 
 
 ## 2 客户端
+### 2.1 客户端设计逻辑
+客户端需要实现3个功能：接收并响应用户操作、发送消息到服务器、重复地接收并处理来自服务器的消息。这些功能主要由Client类实现。
 
+### 2.2 客户端设计逻辑
+
+#### 2.2.1 响应用户
+在`Client`类中，我们通过以下这些函数实现对用户操作的响应：  
+|函数                                     |功能            |
+| --------------------------------------- | -------------------------------------------------------- |
+|`startup(self)`                      |开启窗口，连接服务器端，创建并开启一个子线程来专门接受消息，实现对窗口操作的响应|
+|`clear_inputs(self)`                      |清理窗口内容，打开新窗口的前置工作|
+|`response_login_handle(self)` |登录结果的响应|
+|`response_register_handle(self)` |注册结果的响应|
+|`response_chat_handle(self)` |聊天信息的响应|
+|`exit(self)` |退出程序|
+- 部分功能性函数对应代码如下：
+```python
+    def startup(self):
+        """开启窗口"""
+        self.conn.connect()
+        Thread(target=self.response_handle).start() # 创建并开启一个子线程来专门接收消息
+        self.window.mainloop()
+
+    def clear_inputs(self):
+        """清空窗口内容"""
+        self.window.clear_username()
+        self.window.clear_password()
+        
+    def response_login_handle(self, response_data):
+        """登录结果响应"""
+        print('接收到登录信息~~', response_data)
+        result = response_data['result']
+        if result == '0':
+            showinfo('提示', '登录失败，账号或密码错误！') # 参数1，标题；参数2，提示内容
+            print('登录失败')
+            return
+
+        # 登录成功获取用户信息
+        showinfo('提示', '登录成功！')
+        nickname = response_data['nickname']
+        username = response_data['username']
+        roomnumber = response_data['roomnumber']
+        self.username = username
+        self.roomnumber = roomnumber
+        print('%s 的昵称为 %s，已经登录成功' % (username, nickname))
+
+        # 显示聊天窗口
+        self.window_chat.set_title(nickname, roomnumber)
+        self.window_chat.update()
+        self.window_chat.deiconify()
+
+        # 隐藏聊天窗口
+        self.window.withdraw()
+
+    def response_register_handle(self, response_data):
+        """注册结果响应"""
+        print('接收到注册信息~~', response_data)
+        result = response_data['result']
+        if result == '0':
+            showinfo('提示', '注册失败') # 参数1，标题；参数2，提示内容
+            print('注册失败')
+            return
+
+        # 注册成功
+        #showinfo('提示', '注册成功！')
+        username = response_data['username']
+        showinfo('提示', '注册成功！你的账号为 %s。' % username)
+
+    def response_chat_handle(self,response_data):
+        """聊天信息响应"""
+        print('接收到聊天消息~~', response_data)
+        sender = response_data['nickname']
+        message = response_data['message']
+        self.window_chat.append_message(sender, message)
+
+    def exit(self):
+        '''退出程序'''
+        self.is_running = False
+        self.conn.close()
+        sys.exit(0)
+```
+#### 2.2.2 发送消息  
+
+`Client`类中实现发送消息的函数及基本功能见下表：  
+
+|函数                               |功能            |
+| -------------------------------- | --------------------------------------------- |
+|`send_login_data(self)`      |（1）获取到用户输入的账号密码；<br>（2）生成合乎规则的协议文本；<br>（3）发送协议|
+|`send_chat_data(self)`                  |（1）获取输入框内容并清空输入框<br>（2）拼接协议文本<br />（3）发送协议<br />（4）把消息内容显示到聊天区|
+|`send_register_data(self)` |（1）获取到用户输入的昵称和密码；<br/>（2）生成协议文本；<br/>（3）发送协议|
+
+- 三个函数代码如下：
+```python
+    def send_login_data(self):
+        """发送登录消息到服务器"""
+        # 获取到用户输入的账号密码
+        username = self.window.get_username()
+        password = self.window.get_password()
+        roomnumber = self.window.get_roomnumber()
+
+        #生成协议文本
+        request_text = RequestProtocol.request_login_result(username, password, roomnumber)
+        # 发送协议文本到服务器
+        print('发送给服务器的登录文本为：'+request_text)
+        self.conn.send_data(request_text)
+        # recv_data = self.conn.recv_data()
+        # print(recv_data)
+
+
+    def send_chat_data(self):
+        # 获取输入框内容发送到服务器
+        message = self.window_chat.get_input()
+        print('a %s a' % message)
+        self.window_chat.clear_input()  #清空输入框
+
+        # 拼接协议文本
+        request_text = RequestProtocol.request_chat(str(self.username), message, str(self.roomnumber))
+
+        # 发送消息内容
+        self.conn.send_data(request_text)
+
+        # 把消息内容显示到聊天区
+        self.window_chat.append_message('Me', message)
+
+    def send_register_data(self):
+        """发送注册消息到服务器"""
+        # 获取到用户输入的昵称密码
+        register_info = self.window.set_up_config()
+        nickname = register_info[0]
+        password = register_info[1]
+
+        #生成协议文本
+        request_text = RequestProtocol.request_register(nickname, password)
+        # 发送协议文本到服务器
+        print('发送给服务器的注册文本为：'+request_text)
+        self.conn.send_data(request_text)
+        # recv_data = self.conn.recv_data()
+        # print(recv_data)
+```
+
+#### 2.2.3 接收消息  
+
+与服务器端类似，客户端需要实现客户端多次收发消息，我们用while true循环实现。来自服务器的消息分为注册响应、登录响应、聊天信息三类，需要分别解析协议文本。对应代码如下：
+
+```python
+    def parse_response_data(recv_data):
+        """
+        注册的响应消息：1000|成功/失败|账号
+        登录的响应消息：1001|成功/失败|昵称|账号|房间号
+        聊天的响应消息：1002|发送者昵称|消息内容
+        """
+        # 使用协议约定的符号来切割消息
+        response_data_list = recv_data.split(DELIMITER)
+
+        # 解析消息的各个组成部分
+        response_data = dict()
+        response_data['response_id'] = response_data_list[0]
+
+        if response_data['response_id'] == RESPONSE_LOGIN_REQUEST:
+            # 登录结果的响应
+            response_data['result'] = response_data_list[1]
+            response_data['nickname'] = response_data_list[2]
+            response_data['username'] = response_data_list[3]
+            response_data['roomnumber'] = response_data_list[4]
+
+        elif response_data['response_id'] == RESPONSE_CHAT_REQUEST:
+            # 聊天消息的响应
+            response_data['nickname'] = response_data_list[1]
+            response_data['message'] = response_data_list[2]
+
+        elif response_data['response_id'] == RESPONSE_REGISTER_REQUEST:
+            # 注册消息的响应
+            response_data['result'] = response_data_list[1]
+            response_data['username'] = response_data_list[2]
+
+        return response_data
+```
 
 ## 3 数据库
 
