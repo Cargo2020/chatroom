@@ -1,5 +1,3 @@
-
-
 # I. 项目概述
 ## 1 简介
 使用python开发一个网络多人聊天室。聊天室采用C/S（Client/Server）模式，基于socket编程实现网络通信。程序包括客户端和服务器端两部分，客户端发送聊天信息到服务器端，服务器端负责转发聊天信息给其他所有在线用户。  
@@ -18,38 +16,91 @@
 本程序分为`Server`和`Client`两个文件夹，具体文件结构见下表。
 
 ### 3.1 Server
-|文件名                                     |功能            |
-| --------------------------------------- | ----------------------- |  
-|`config.py`               |   保存程序中需要的参数，包括操作符、服务器地址和服务器端口号等信息，便于后续程序的引用，也便于后续的修改  |  
-|`db.py`                      |       |
-|`response_protocol.py`                      |   定义了拼接服务器消息的函数   |  
-|`server.py`                     |  服务器核心类，集成服务器所需的功能，包括创建与客户端连接、解析并处理客户端消息、向客户端发送消息、处理客户端下线的功能|  
-|`server_socket.py`                     |  对服务器socket的封装类，包含了服务器socket创建、与IP地址的绑定和进入监听状态   |  
-|`socket_wrapper.py`   |   对与客户端交互的socket的封装，主要对send和receive方法进行了封装，封装后的方法包含了收发以及收发后的解码  |
+| 文件名                 | 功能                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| `config.py`            | 保存程序中需要的参数，包括操作符、服务器地址和服务器端口号等信息，便于后续程序的引用，也便于后续的修改 |
+| `db.py`                |                                                              |
+| `response_protocol.py` | 定义了拼接服务器消息的函数                                   |
+| `server.py`            | 服务器核心类，集成服务器所需的功能，包括创建与客户端连接、解析并处理客户端消息、向客户端发送消息、处理客户端下线的功能 |
+| `server_socket.py`     | 对服务器socket的封装类，包含了服务器socket创建、与IP地址的绑定和进入监听状态 |
+| `socket_wrapper.py`    | 对与客户端交互的socket的封装，主要对send和receive方法进行了封装，封装后的方法包含了收发以及收发后的解码 |
 
 
 ### 3.2 Client
-|文件名                    |功能         |
-| ------------------------ | ----------------------- |  
-|`config.py`               | 保存程序中需要的参数，包括操作符、服务器地址和服务器端口号等信息，便于后续程序的引用，也便于后续的修改 |  
-|`request_protocol.py`     |       |
-|`client.py`    |      |  
-|`client_socket.py`          | 对客户端socket的封装类，包含了客户端socket创建、与服务器端的连接及收发消息 |  
-|`login.py`        |  登录及注册窗口图形界面设计   |  
-|`chat_window.py`   |  聊天窗口图形界面设计  |
+| 文件名                | 功能                                                         |
+| --------------------- | ------------------------------------------------------------ |
+| `config.py`           | 保存程序中需要的参数，包括操作符、服务器地址和服务器端口号等信息，便于后续程序的引用，也便于后续的修改 |
+| `request_protocol.py` |                                                              |
+| `client.py`           |                                                              |
+| `client_socket.py`    | 对客户端socket的封装类，包含了客户端socket创建、与服务器端的连接及收发消息 |
+| `login.py`            | 登录及注册窗口图形界面设计                                   |
+| `chat_window.py`      | 聊天窗口图形界面设计                                         |
 
-## 4 项目预览
-【运行的截图们，可以再描述一下怎么启动程序】
+## 4 项目运行及预览
+
+### 多个聊天室
+
+为了实现多个聊天室的功能，首先需要对服务器与客户端的通信协议进行修改，在客户端请求登录和发送聊天消息时加入房间号：
+
+- 客户端请求登录： 
+
+  `0001|username|password|roomnumber`
+
+- 客户端发送聊天信息：
+
+  `0002|username|messages|roomnumber`
+
+用户登录时需要首先指定房间号`roomnumber`，服务器端将该用户的socket与房间号绑定并存入在线用户字典
+
+```python
+self.clients[username] = {'sock': client_soc, 'nickname': nickname, 'roomnumber': roomnumber}
+```
+
+客户端发送的聊天信息中也包含房间号，服务器在转发该条聊天时，只转发至有相同房间号的客户端：
+
+```Python
+for u_name, info in self.clients.items():
+    if username == u_name:  # 不需要向发送消息的人转发数据
+        continue
+    if info['roomnumber'] == roomnumber: # 只给同一聊天室的人发送信息
+        info['sock'].send_data(msg)
+```
+
+### 运行程序
+
+- 服务器端：需要在config.py文件中配置如下变量，配置结束后直接运行server.py文件即可，程序会开始等待客户端的连接。
+
+| 变量          | 意义                     |
+| ------------- | ------------------------ |
+| `SERVER_IP`   | 服务器的IP地址。         |
+| `SERVER_PORT` | 服务器程序的端口号。     |
+| `DB_HOST`     | 数据库服务器的IP地址。   |
+| `DB_PORT`     | 数据库管理程序的端口号。 |
+| `DB_NAME`     | 数据库名称。             |
+| `DB_PASSWORD` | 数据库密码。             |
+
+- 客户端：需要在config.py文件中配置如下变量，配置结束后直接运行client.py文件即可。点击register按钮注册新用户。老用户输入用户名、密码、房间号后点击login按钮即可登录。
+
+| 变量          | 意义                 |
+| ------------- | -------------------- |
+| `SERVER_IP`   | 服务器的IP地址。     |
+| `SERVER_PORT` | 服务器程序的端口号。 |
+
+==【运行的截图们，可以再描述一下怎么启动程序】==
 
 # II. 协议及技术
 ## 1 Client-Server 架构
-我们开发的多人聊天室采用典型的C/S架构。Client-Server架构是计算机网络中最常用的通信模式之一，其中客户端向服务器请求并接收服务；服务器端等待客户端连接、处理请求并提供服务。一台服务器可以同时为多个客户端提供服务，不同客户端之间的资源不能共享。使用C/S模式的典型应用还包括电子邮件和万维网等。  <br>
-[图片]<br>
+我们开发的多人聊天室采用典型的C/S架构。Client-Server架构是计算机网络中最常用的通信模式之一，其中客户端向服务器请求并接收服务；服务器端等待客户端连接、处理请求并提供服务。一台服务器可以同时为多个客户端提供服务，不同客户端之间的资源不能共享。使用C/S模式的典型应用还包括电子邮件和万维网等。 
+
+![image-20201121154130317](C:\Users\LENOVO\AppData\Roaming\Typora\typora-user-images\image-20201121154130317.png)
+
 与Peer-to-peer结构相比，C/S结构指定了请求服务的客户端和提供服务的服务器端，因此需要一台中心化服务器（而P2P不需要）。在确保服务器端可靠性的前提下，C/S结构使得服务器端能更好的控制和管理客户端对资源的访问，为客户端提供更加安全高效的服务，而且更易于维护和修改。但是C/S结构也存在一些问题。例如当并发客户端请求频繁出现时，服务器会严重超载，造成流量堵塞；当关键服务器端发生故障时，所有客户端请求无法得到满足。这些情况下，C/S集中式体系架构不如P2P网络健壮。<br>
+
 ## 2 基于TCP协议的Socket通信
 Socket用来描述IP地址和端口，是支持TCP/IP协议网络通信的基本操作单元。应用程序可以通过socket向网络发送请求或对请求做出响应。服务器端socket在特定IP地址的指定端口监听客户端请求，客户端socket指明需要连接的服务器地址及端口号，两端建立连接后即可通过输入输出流交换信息，实现网络通信。
 在我们的多人聊天室中，为服务器端及每一个客户端建立socket，服务器端在指定端口（1501）进行监听，不同客户端均绑定相同端口，通过与服务器端的交互实现客户端之间相互通信。具体实现见第三部分。
-[可以放一张socket通信图]
+
+<img src="C:\Users\LENOVO\AppData\Roaming\Typora\typora-user-images\image-20201121154239741.png" alt="image-20201121154239741" style="zoom:67%;" />
 
 ## 3 多线程
   多人聊天室需要多个客户端同时连接到服务器进行交互，因此需要在服务器端使用多线程。每新增加一个客户端连接，就为其分配一个线程，进行通信。<br>
@@ -373,9 +424,10 @@ def remove_offline_user(self, client_soc):
 
 
 ## 3 数据库
+
 为了支持注册与登录功能，需要在服务器端部署数据库。我们使用PostgreSQL作为数据库平台，同时使用psycopg2包让Python控制我们的数据库。
 
-我们的数据库设计非常简单，只有一个名为`user_info`的表，该表中包含三列：用户名，昵称和密码。用户名是我们的主键，它是一个唯一的整数，注册时会自动分配。昵称和密码可以由用户设定。该表的设计如下：
+我们的数据库设计非常简单，只有一个名为“user_info”的表，该表中包含三列：用户名，昵称和密码。用户名是我们的主键，它是一个唯一的整数，注册时会自动分配。昵称和密码可以由用户设定。该表的设计如下：
 
 ```sql
 CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCHAR(80), password VARCHAR(80)) 
@@ -396,18 +448,18 @@ CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCH
 #### 4.1.1 登录窗口
 登录窗口通过创建`WindowLogin`类实现，`WindowLogin`继承了`tkinter`库中的`Tk`窗口类。  
 `WindowLogin`类中包含的函数及基本功能见下表：  
-|函数                                     |功能            |
-| --------------------------------------- | -------------------------------------------------------- |  
-|`window_init(self)`                      |设置窗口基本属性，包括窗口标题、大小、位置；设置窗口尺寸不可修改|  
-|`add_widgets(self)`                      |添加控件，包括两个标签（Username, Password）、两个对应文本框、以及三个按钮（Reset、Login、Register）。<br>窗口整体采用grid表格布局，用户名、密码的标签及输入框分别放置在第一、二行；三个按钮放置在一个Frame中，Frame整体置于第三行。|
-|`clear_input(self)`                      |实现对用户名、密码文本框中已输入内容的清除，辅助实现Reset按钮功能|  
-|`get_username(self)`                     |获取用户名文本框中输入内容|  
-|`get_password(self)`                     |获取密码文本框中输入内容|  
-|`on_reset_button_click(self, command)`   |点击Reset按钮后触发事件，参数command为待执行事件|  
-|`on_login_button_click(self, command)`   |点击Login按钮后触发事件，参数command为待执行事件|  
-|`on_register_button_click(self, command)`|点击Register按钮后触发事件，参数command为待执行事件|  
-|`get_register_info(self)`  `set_up_config(self)` |调用注册子窗口，等待子窗口输入并获取子窗口中注册文本信息|
-|`on_window_closed(self, command)`        |用户退出时对窗口资源的释放|
+| 函数                                             | 功能                                                         |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| `window_init(self)`                              | 设置窗口基本属性，包括窗口标题、大小、位置；设置窗口尺寸不可修改 |
+| `add_widgets(self)`                              | 添加控件，包括两个标签（Username, Password）、两个对应文本框、以及三个按钮（Reset、Login、Register）。<br>窗口整体采用grid表格布局，用户名、密码的标签及输入框分别放置在第一、二行；三个按钮放置在一个Frame中，Frame整体置于第三行。 |
+| `clear_input(self)`                              | 实现对用户名、密码文本框中已输入内容的清除，辅助实现Reset按钮功能 |
+| `get_username(self)`                             | 获取用户名文本框中输入内容                                   |
+| `get_password(self)`                             | 获取密码文本框中输入内容                                     |
+| `on_reset_button_click(self, command)`           | 点击Reset按钮后触发事件，参数command为待执行事件             |
+| `on_login_button_click(self, command)`           | 点击Login按钮后触发事件，参数command为待执行事件             |
+| `on_register_button_click(self, command)`        | 点击Register按钮后触发事件，参数command为待执行事件          |
+| `get_register_info(self)`  `set_up_config(self)` | 调用注册子窗口，等待子窗口输入并获取子窗口中注册文本信息     |
+| `on_window_closed(self, command)`                | 用户退出时对窗口资源的释放                                   |
 
 在设计登录窗口时，有意将点击按钮触发指令编写成独立的函数，而非直接在初始化Button时设置command参数。这是为了方便后续客户端向服务器端传递登录/注册信息，以实现点击按钮的同时完成信息的跨端传输。  
 - 部分功能性函数对应代码如下：
@@ -438,17 +490,17 @@ CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCH
     def set_up_config(self):
         res = self.get_register_info()
         return res
-```        
+```
 [登录窗口截图]  
 
 #### 4.1.2 注册子窗口  
 注册子窗口通过创建`RegisterWindow`类实现，`RegisterWindow`继承了`Toplevel`类，作为登录窗口的子窗口存在。点击登录窗口的``Register``按钮时弹出注册子窗口。
 `RegisterWindow`类中包含的函数及基本功能见下表：  
 
-|函数                               |功能            |
-| -------------------------------- | --------------------------------------------- |  
-|`register_window_init(self)`      |（1）设置窗口属性及控件布局，包括窗口标题、大小、位置；设置窗口尺寸不可更改；<br>（2）添加控件，包括两个标签（Nickname、Password）、两个对应文本框以及Register按钮|  
-|`get_info(self)`                  |获取两个文本框中用户输入的注册信息，以 [nickname, password] 列表形式保存在user_info变量中|  
+| 函数                         | 功能                                                         |
+| ---------------------------- | ------------------------------------------------------------ |
+| `register_window_init(self)` | （1）设置窗口属性及控件布局，包括窗口标题、大小、位置；设置窗口尺寸不可更改；<br>（2）添加控件，包括两个标签（Nickname、Password）、两个对应文本框以及Register按钮 |
+| `get_info(self)`             | 获取两个文本框中用户输入的注册信息，以 [nickname, password] 列表形式保存在user_info变量中 |
 
 调试过程中发现，当点击`Register`按钮弹出注册窗口时，由于主窗口和子窗口实际是同时运行的，登录主窗口不会等待注册子窗口输入完再获取它的值，则传输到数据库中的注册信息总为空。解决方法为单独创建一个`RegisterWindow`注册子窗口类，在主窗口中调用并使用`wait_window()`方法，实现等待注册信息输入完成、点击子窗口中`Register`按钮后登录窗口再进行注册文本的获取及数据库传输。
 
@@ -462,15 +514,15 @@ CREATE TABLE IF NOT EXISTS user_info(username serial PRIMARY KEY, nickname VARCH
 ### 4.2 聊天窗口
 绘制聊天窗口的文件为`chat_window.py`。聊天窗口通过创建`ChatWindow`类实现，`ChatWindow`继承了`Toplevel`类。这是因为一个程序只能有一个根窗口（这里是登录窗口），其余窗口均需要以子窗口形式存在。<br>
 `ChatWindow`类中包含的函数及基本功能见下表：<br>
-|函数                                     |功能            |
-| --------------------------------------- | -------------------------------------------------------- |  
-|`add_widgets(self)`                      |设置窗口属性及布局，包括聊天内容显示框、聊天文本输入框和发送按钮。其中聊天内容显示框借助滚动文字控件ScrolledText实现。<br>窗口采用grid表格布局，聊天内容显示框放置在第一行；文本输入框及发送按钮放置在第二行，分别占据第一、二列。|  
-|`set_title(self, title)`                 |定制化聊天窗口标题，格式为“Welcome ×× into chatroom”，××为对应登录用户的昵称|
-|`on_send_button_click(self, command)`         |点击Send按钮后触发事件，参数command为待执行事件|  
-|`get_input(self)`                     |获取聊天输入框中输入内容|  
-|`clear_input(self)`                     |清除聊天输入框中内容。辅助实现：点击发送按钮后，输入框中内容全部清除（代表信息发送出去）|  
-|`append_message(self, sender, message)`   |添加聊天信息到聊天内容显示框。效果如图：<br>发送者tag格式为[昵称：当前时间]，用户自己发出的信息昵称会显示为“Me”|  
-|`on_window_closed(self, command)`       |用户退出时对窗口资源的释放|
+| 函数                                    | 功能                                                         |
+| --------------------------------------- | ------------------------------------------------------------ |
+| `add_widgets(self)`                     | 设置窗口属性及布局，包括聊天内容显示框、聊天文本输入框和发送按钮。其中聊天内容显示框借助滚动文字控件ScrolledText实现。<br>窗口采用grid表格布局，聊天内容显示框放置在第一行；文本输入框及发送按钮放置在第二行，分别占据第一、二列。 |
+| `set_title(self, title)`                | 定制化聊天窗口标题，格式为“Welcome ×× into chatroom”，××为对应登录用户的昵称 |
+| `on_send_button_click(self, command)`   | 点击Send按钮后触发事件，参数command为待执行事件              |
+| `get_input(self)`                       | 获取聊天输入框中输入内容                                     |
+| `clear_input(self)`                     | 清除聊天输入框中内容。辅助实现：点击发送按钮后，输入框中内容全部清除（代表信息发送出去） |
+| `append_message(self, sender, message)` | 添加聊天信息到聊天内容显示框。效果如图：<br>发送者tag格式为[昵称：当前时间]，用户自己发出的信息昵称会显示为“Me” |
+| `on_window_closed(self, command)`       | 用户退出时对窗口资源的释放                                   |
 
 - 用于添加聊天信息的`append_message()`函数代码如下：
 ```python
